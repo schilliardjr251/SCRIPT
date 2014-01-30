@@ -1,0 +1,156 @@
+package org.sticker.jsf;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import javax.faces.context.FacesContext;
+import javax.inject.Named;
+import javax.servlet.ServletContext;
+
+@Named(value = "stickerSheet")
+public class StickerSheet implements Serializable {
+
+ public List<String> getAllStickers() {
+  ServletContext ctx = (ServletContext) FacesContext.getCurrentInstance()
+          .getExternalContext().getContext();
+  final String stickerPath = "/resources/stickers/";
+  List<String> allStickers = new ArrayList<>(ctx.getResourcePaths(stickerPath));
+
+  for (ListIterator<String> listIterator = allStickers.listIterator(); listIterator.hasNext();) {
+   String value = listIterator.next();
+   value = value.substring(stickerPath.length(), value.length());
+   listIterator.set(value);
+  }
+
+  return allStickers;
+ }
+}
+
+
+package org.sticker.websocket;
+
+public class Sticker {
+
+ private int x;
+ private int y;
+ private String image;
+
+ public Sticker() {
+ }
+
+ public int getX() {
+  return x;
+ }
+
+ public void setX(int x) {
+  this.x = x;
+ }
+
+ public int getY() {
+  return y;
+ }
+
+ public void setY(int y) {
+  this.y = y;
+ }
+
+ public String getImage() {
+  return image;
+ }
+
+ public void setImage(String image) {
+  this.image = image;
+ }
+}
+
+
+
+package org.sticker.websocket;
+
+import java.io.IOException;
+import java.io.Reader;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.spi.JsonProvider;
+import javax.websocket.DecodeException;
+import javax.websocket.Decoder;
+
+public class StickerDecoder implements Decoder.TextStream<Sticker> {
+
+ @Override
+ public Sticker decode(Reader reader) throws DecodeException, IOException {
+  JsonProvider provider = JsonProvider.provider();
+  JsonReader jsonReader = provider.createReader(reader);
+  JsonObject jsonSticker = jsonReader.readObject();
+  Sticker sticker = new Sticker();
+  sticker.setX(jsonSticker.getInt("x"));
+  sticker.setY(jsonSticker.getInt("y"));
+  sticker.setImage(jsonSticker.getString("sticker"));
+  return sticker;
+
+ }
+}
+
+package org.sticker.websocket;
+
+import java.io.IOException;
+import java.io.Writer;
+import javax.json.JsonObject;
+import javax.json.JsonWriter;
+import javax.json.spi.JsonProvider;
+import javax.websocket.EncodeException;
+import javax.websocket.Encoder;
+
+public class StickerEncoder implements Encoder.TextStream<Sticker> {
+
+ @Override
+ public void encode(Sticker sticker, Writer writer) throws EncodeException, IOException {
+  JsonProvider provider = JsonProvider.provider();
+  JsonObject jsonSticker = provider.createObjectBuilder()
+          .add("action", "add")
+          .add("x", sticker.getX())
+          .add("y", sticker.getY())
+
+
+package org.sticker.websocket;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.websocket.EncodeException;
+import javax.websocket.Session;
+import javax.websocket.server.ServerEndpoint;
+import javax.websocket.OnMessage;
+import javax.websocket.OnOpen;
+
+@ServerEndpoint(
+        value = "/story/notifications",
+        encoders = {StickerEncoder.class},
+        decoders = {StickerDecoder.class})
+public class StoryWebSocket {
+
+ private static final List<Sticker> stickers = Collections.synchronizedList(new LinkedList<Sticker>());
+
+ @OnMessage
+ public void onMessage(Session session, Sticker sticker) {
+  stickers.add(sticker);
+  Set<Session> openSessions = session.getOpenSessions();
+  for (Session openSession : openSessions) {
+   try {
+    openSession.getBasicRemote().sendObject(sticker);
+   } catch (IOException | EncodeException ex) {
+    Logger.getLogger(StoryWebSocket.class.getName()).log(Level.SEVERE, null, ex);
+   }
+  }
+ }
+          .add("sticker", sticker.getImage())
+          .build();
+  JsonWriter jsonWriter = provider.createWriter(writer);
+  jsonWriter.write(jsonSticker);
+ }
+}
