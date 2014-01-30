@@ -1,0 +1,120 @@
+
+
+public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
+
+        private static final IntWritable one = new IntWritable(1);
+
+         public void map(LongWritable key, Text value, Context context)
+                throws IOException, InterruptedException {
+            try {
+                String line = value.toString();
+                String[] parts = line.split(" ");
+                String domain = new URL(parts[2]).getHost();
+                context.write(new Text(domain), one);
+            } catch (MalformedURLException e) {
+            }
+        }
+    }
+
+    public static class Reduce extends Reducer<Text, IntWritable, Text, IntWritable> {
+
+         public void reduce(Text key, Iterable<IntWritable> values, Context context)
+                throws IOException, InterruptedException {
+            int count = 0;
+            for (IntWritable value : values) {
+                count = count + value.get();
+            }
+            context.write(key, new IntWritable(count));
+        }
+    }
+
+
+private Text domain = new Text();
+        private static final IntWritable one = new IntWritable(1);
+
+ 
+       public void map(LongWritable key, Text value, Context context)
+                throws IOException, InterruptedException {
+            try {
+                String line = value.toString();
+  String[] parts = line.split(" ");
+                String host = new URL(parts[2]).getHost();
+                domain.set(host);
+                context.write(domain, one);
+            } catch (MalformedURLException e) {
+            }
+
+        }
+
+
+job.setMapperClass(Mapp.class);
+job.setCombinerClass(Reduce.class);
+job.setReducerClass(Reduce.class);
+job.setOutputKeyClass(Text.class);
+job.setOutputValueClass(IntWritable.class);
+job.submit();
+
+
+
+       private Map<String, Integer> items = new HashMap<String, Integer>();
+        public void map(LongWritable key, Text value, Context context)
+                throws IOException, InterruptedException {
+            try {
+            	String line = value.toString();
+              String[] parts = line.split(" ");
+                String host = new URL(parts[2]).getHost();
+                Integer count = items.get(host);
+                if (count == null) {
+                    items.put(host, 1);
+                } else {
+                    items.put(host, count + 1);
+                }
+            } catch (MalformedURLException e) {}
+        }
+
+       public void cleanup(Context context) 
+throws IOException, InterruptedException {
+            for (Entry<String, Integer> item : items.entrySet()) {
+                key.set(item.getKey());
+                value.set(item.getValue());
+                context.write(key, value);
+            }
+        }
+
+
+
+
+public class Listing5 extends DoFn<String, Pair<String, Integer>> {
+    public void process(String line, Emitter<Pair<String, Integer>> emitter) {
+        String[] parts = line.split(" ");
+        try {
+            URL url = new URL(parts[2]);
+            emitter.emit(Pair.of(url.getHost(), 1));
+        } catch(MalformedURLException e) {}
+    }
+    
+}
+
+
+
+Pipeline pipeline = new MRPipeline(Listing6.class, getConf());
+              pipeline.enableDebug(); 
+for (FileStatus status : files) {
+                PCollection<String> lines = 
+pipeline.readTextFile(status.getPath().toString());
+
+                PTable<String, Integer> visitors = lines.parallelDo("Listing6", 
+                               new Listing5(),  
+                               Writables.tableOf(Writables.strings(), Writables.ints()));
+                                           
+                PGroupedTable<String, Integer> grouped = visitors.groupByKey(1);
+  
+                PTable<String, Integer> counts = 
+grouped.combineValues(Aggregators.<String>SUM_INTS());
+
+  pipeline.writeTextFile(counts, "/tmp/demos/crunch"+System.nanoTime());
+            }
+            
+            PipelineResult pipelineResult = pipeline.done();
+
+Copyright 2014 Oracle Corporation
