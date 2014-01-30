@@ -1,0 +1,147 @@
+
+public class Model {
+    
+    private static Model instance = new Model();
+    
+    private static ObservableList<String> chatters = FXCollections.observableArrayList();
+    private static ObservableList<ChatMessage> chatMessages = FXCollections.observableArrayList();
+    
+    public static Model getInstance() {
+        return instance;
+    }
+    
+    public ObservableList<String> chatters() {
+        return chatters;
+    }
+
+    public ObservableList<ChatMessage> chatMessages() {
+        return chatMessages;
+    }
+
+}
+
+
+        ListView<String> chatters = new ListView<>(Model.getInstance().chatters());
+...
+        ListView<ChatMessage> messages = new ListView(Model.getInstance().chatMessages());
+
+
+messages.setCellFactory(new Callback<ListView<ChatMessage>,ListCell<ChatMessage>>(){
+
+        @Override
+        public ListCell<ChatMessage> call(ListView<ChatMessage> p) {
+            return new ChatListCell();
+        }
+});
+
+
+
+@Override
+    public void updateItem(ChatMessage item, boolean isEmpty) {
+        if (isEmpty || (item == null)) {
+            return;
+        }
+        setText(item.getUid() + ": " + item.getText());
+    }
+
+
+
+private void createWebSocket() {
+        WebSocketContainer container = ContainerProvider.getWebSocketContainer();
+        try {
+            URI uri = new URI(SERVER);
+            session = container.connectToServer(ChatClientEndpoint.class, uri);
+            remoteEndpoint = session.getBasicRemote();
+            
+        } catch (...) {
+          ...
+        }
+    }
+
+
+
+Session session = container.connectToServer(ChatClientEndpoint.class, uri);
+
+
+
+@ClientEndpoint
+public class ChatClientEndpoint {
+
+    @OnOpen
+    public void onConnect(Session s) {
+        System.out.println("CONNECTED!");
+    }
+
+    @OnMessage
+    public void onMessage(String msg, Session s) {
+	...
+    }
+}
+
+
+
+JsonReader reader = Json.createReader(new ByteArrayInputStream(msg.getBytes()));
+final JsonObject node = reader.readObject();
+String command = node.getString("command");
+
+
+
+	    final String uid = node.getString("uid");
+                Platform.runLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        Model.getInstance().chatters().add(uid);
+                    }
+                });
+ 
+               
+
+
+
+Model.getInstance().chatters().remove(uid); 
+
+
+
+Platform.runLater(new Runnable() {
+    @Override
+    public void run() {
+        JsonArray uids = node.getJsonArray("uids");
+        Iterator<JsonValue> it = uids.iterator();
+        while ( it.hasNext()) {
+            JsonObject val = (JsonObject) it.next();
+            Model.getInstance().chatters().add(val.getString("uid"));
+        }
+    }
+ });
+ 
+
+
+                final String uid = node.getString("uid");
+                final String text = node.getString("text");
+                Platform.runLater(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        ChatMessage message = new ChatMessage(uid, text);
+                        System.out.println("adding chatmessage");
+                        Model.getInstance().chatMessages().add(message);
+                    }
+                });
+
+
+
+RemoteEndpoint.Basic remoteEndpoint = session.getBasicRemote();
+
+
+
+        JsonObject model = Json.createObjectBuilder()
+                .add("command", "login")
+                .add("uid", user).build();
+        StringWriter sw = new StringWriter();
+        JsonWriter writer = Json.createWriter(sw);
+        writer.writeObject(model);
+        remoteEndpoint.sendText(sw.toString());
+
+
+Copyright 2014 Oracle Corporation
+
